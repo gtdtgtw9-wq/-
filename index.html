@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>標本目録 — Tag Specimen Catalog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="eyebrow"><span class="dot"></span>PROMPT TAXONOMY BROWSER</div>
+  <h1>標本目録</h1>
+  <p class="sub">danbooruタグの参照目録を検索・閲覧して、意図するプロンプトを組み立てられます。タグをタップするとプロンプトに追加され、下（またはサイドバー）でまとめてコピーできます。キャラクター名・所属は目録に含めず、使う場合はご自身で自由入力欄に入力してください。</p>
+</header>
+
+<div class="info-edit-banner" id="infoEditBanner" style="display:none;">
+  <span id="infoEditBannerText"></span>
+  <button class="btn" id="infoEditBannerExit">終了</button>
+</div>
+
+<div class="search-wrap">
+  <div class="search-box">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input id="search" type="text" placeholder="検索: 笑顔 / smile / 逆光 / ツンデレ ..." autocomplete="off">
+  </div>
+  <div class="search-meta" id="searchMeta"></div>
+</div>
+
+<div class="layout">
+  <main class="browse" id="browse"></main>
+
+  <aside class="tray">
+    <div data-tray-root="1">
+  <div class="tray-title">
+    かご <small>選択中 <span data-tray-total>0</span> 件</small>
+    <button class="clear-link" data-clear>すべて空にする</button>
+  </div>
+  <div class="history-row">
+    <button class="btn" data-undo title="直前の変更を取り消す">↺ 元に戻す</button>
+    <button class="btn" data-redo title="取り消した変更をやり直す">↻ やり直す</button>
+  </div>
+  <hr class="rule" style="margin:12px 0;">
+
+  <div class="tray-group">
+    <div class="tray-group-head">
+      <span class="tray-label">キャラクター</span>
+    </div>
+    <div class="char-fields">
+      <input type="text" class="char-input char-name-input" placeholder="キャラクター名（例: houshou marine）" autocomplete="off">
+      <input type="text" class="char-input char-affiliation-input" placeholder="所属（例: hololive）" autocomplete="off">
+    </div>
+    <div class="char-save-row">
+      <button class="btn" data-save-preset>☆ 名前・所属＋現在のタグを登録</button>
+    </div>
+    <div class="char-presets" data-presets></div>
+    <p class="char-hint">名前・所属タグは自分で入力してください。登録時点でPromptに入っているタグ（髪色・目の色・服装など）も外見情報として一緒に保存され、次回そのキャラクターを呼び出すと自動で追加されます。</p>
+  </div>
+
+  <div class="tray-group" data-char-hierarchy>
+    <div class="tray-group-head">
+      <span class="tray-label">所属・グループ・キャラクター選択</span>
+      <button class="multi-toggle-btn" data-hier-manage-toggle>登録・編集</button>
+    </div>
+    <div class="hier-select-row">
+      <select class="hier-select" data-hier-org><option value="">① 所属を選択...</option></select>
+      <select class="hier-select" data-hier-group disabled><option value="">② グループを選択...</option></select>
+      <select class="hier-select" data-hier-char disabled><option value="">③ キャラクターを選択...</option></select>
+    </div>
+    <div class="hier-clear-row">
+      <button class="btn" data-hier-clear disabled>選択を解除してフリー入力に戻す</button>
+      <button class="btn primary" data-hier-insert disabled title="選択中の所属・グループ・キャラクターのうち、最も深いレベル1件をPromptへ正式に追加します">選択中の項目をPromptへ挿入</button>
+    </div>
+    <p class="hier-status is-empty" data-hier-status>未選択（上の名前・所属欄をフリー入力として使用中）</p>
+
+    <div class="hier-manage" data-hier-manage style="display:none;">
+      <div class="hier-manage-block">
+        <div class="hier-manage-title">所属を登録</div>
+        <div class="hier-add-row">
+          <input type="text" data-new-org-name placeholder="表示名（例: 東方Project）" autocomplete="off">
+          <input type="text" data-new-org-value placeholder="Promptタグ（例: touhou、任意）" autocomplete="off">
+          <button class="btn" data-add-org>＋ 所属を追加</button>
+        </div>
+        <div class="hier-list" data-org-list></div>
+      </div>
+      <div class="hier-manage-block">
+        <div class="hier-manage-title">グループを登録</div>
+        <div class="hier-add-row">
+          <select data-new-group-org><option value="">所属を選択...</option></select>
+          <input type="text" data-new-group-name placeholder="表示名（例: 紅魔郷組）" autocomplete="off">
+          <input type="text" data-new-group-value placeholder="Promptタグ（任意）" autocomplete="off">
+          <button class="btn" data-add-group>＋ グループを追加</button>
+        </div>
+        <div class="hier-list" data-group-list></div>
+      </div>
+      <div class="hier-manage-block">
+        <div class="hier-manage-title">キャラクターを登録</div>
+        <div class="hier-add-row">
+          <select data-new-char-group><option value="">グループを選択...</option></select>
+          <input type="text" data-new-char-name placeholder="表示名（例: 博麗霊夢）" autocomplete="off">
+          <input type="text" data-new-char-value placeholder="Promptタグ（例: hakurei_reimu）" autocomplete="off">
+          <button class="btn" data-add-char>＋ キャラクターを追加</button>
+        </div>
+        <div class="hier-list" data-char-list></div>
+      </div>
+      <p class="char-hint">所属→グループ→キャラクターの順で登録してください。表示名は日本語、Promptタグはdanbooru形式（例: hakurei_reimu）を推奨します。削除すると、その配下のグループ・キャラクターも一緒に削除されます。</p>
+    </div>
+  </div>
+
+  <div class="tray-group">
+    <div class="tray-group-head">
+      <span class="tray-label">Prompt <span data-pos-count>0</span></span>
+      <button class="multi-toggle-btn" data-multi-toggle="positive">選択削除</button>
+    </div>
+    <div class="tray-chips" data-pos-chips></div>
+    <div class="output-box">
+      <textarea class="out" data-pos-out readonly placeholder="タグをタップすると、ここに追加されます"></textarea>
+      <div class="reorder-row">
+        <span class="reorder-label">並べ替え:</span>
+        <button class="btn" data-reorder="classic" title="品質タグを先頭、キャラ名はその直後（目録本来の順）">目録標準</button>
+        <button class="btn" data-reorder="pixai" title="被写体・キャラ名を先頭、品質/画風タグを末尾">PixAI順</button>
+        <button class="btn" data-reorder="novelai" title="被写体・キャラ名を先頭、品質タグを末尾（NAI Diffusion V3/V4.5系）">NovelAI順</button>
+      </div>
+      <p class="reorder-hint">PixAIとNovelAI（V3/V4.5系の現行モデル）は、品質タグを先頭ではなく末尾に置いた方が効きやすいとされています。目録本来の並び順（品質タグが先頭）を使いたい場合や、NovelAIでも旧V1系モデルを使う場合は「目録標準」を選んでください。</p>
+      <div class="out-actions">
+        <button class="btn primary" data-copy-pos>Promptをコピー</button>
+        <button class="btn" data-multi-delete="positive" style="display:none;">選んだ0件を削除</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tray-group">
+    <div class="tray-group-head">
+      <span class="tray-label neg">Negative prompt <span data-neg-count>0</span></span>
+      <button class="multi-toggle-btn" data-multi-toggle="negative">選択削除</button>
+    </div>
+    <div class="tray-chips" data-neg-chips></div>
+    <div class="output-box">
+      <textarea class="out" data-neg-out readonly placeholder="ネガティブ用語セクションのタグ、または任意のタグを長押しせず選ぶと追加できます"></textarea>
+      <div class="out-actions">
+        <button class="btn" data-copy-neg>Negativeをコピー</button>
+        <button class="btn" data-multi-delete="negative" style="display:none;">選んだ0件を削除</button>
+      </div>
+    </div>
+  </div>
+
+  <hr class="rule">
+  <button class="btn primary" data-copy-both style="width:100%; justify-content:center; padding:10px;">Prompt + Negative をまとめてコピー</button>
+</div>
+
+  </aside>
+</div>
+
+<div class="mobile-bar" id="mobileBar">
+  <div class="mobile-bar-info">選択中のタグ <span class="count" id="mobileCount">0</span></div>
+  <button class="btn primary" id="openSheet">かごを開く</button>
+</div>
+
+<div class="sheet-overlay" id="sheetOverlay"></div>
+<div class="sheet" id="sheet">
+  <div class="sheet-handle"></div>
+  <div data-tray-root="1">
+  <div class="tray-title">
+    かご <small>選択中 <span data-tray-total>0</span> 件</small>
+    <button class="clear-link" data-clear>すべて空にする</button>
+  </div>
+  <div class="history-row">
+    <button class="btn" data-undo title="直前の変更を取り消す">↺ 元に戻す</button>
+    <button class="btn" data-redo title="取り消した変更をやり直す">↻ やり直す</button>
+  </div>
+  <hr class="rule" style="margin:12px 0;">
+
+  <div class="tray-group">
+    <div class="tray-group-head">
+      <span class="tray-label">キャラクター</span>
+    </div>
+    <div class="char-fields">
+      <input type="text" class="char-input char-name-input" placeholder="キャラクター名（例: houshou marine）" autocomplete="off">
+      <input type="text" class="char-input char-affiliation-input" placeholder="所属（例: hololive）" autocomplete="off">
+    </div>
+    <div class="char-save-row">
+      <button class="btn" data-save-preset>☆ 名前・所属＋現在のタグを登録</button>
+    </div>
+    <div class="char-presets" data-presets></div>
+    <p class="char-hint">名前・所属タグは自分で入力してください。登録時点でPromptに入っているタグ（髪色・目の色・服装など）も外見情報として一緒に保存され、次回そのキャラクターを呼び出すと自動で追加されます。</p>
+  </div>
+
+  <div class="tray-group" data-char-hierarchy>
+    <div class="tray-group-head">
+      <span class="tray-label">所属・グループ・キャラクター選択</span>
+      <button class="multi-toggle-btn" data-hier-manage-toggle>登録・編集</button>
+    </div>
+    <div class="hier-select-row">
+      <select class="hier-select" data-hier-org><option value="">① 所属を選択...</option></select>
+      <select class="hier-select" data-hier-group disabled><option value="">② グループを選択...</option></select>
+      <select class="hier-select" data-hier-char disabled><option value="">③ キャラクターを選択...</option></select>
+    </div>
+    <div class="hier-clear-row">
+      <button class="btn" data-hier-clear disabled>選択を解除してフリー入力に戻す</button>
+      <button class="btn primary" data-hier-insert disabled title="選択中の所属・グループ・キャラクターのうち、最も深いレベル1件をPromptへ正式に追加します">選択中の項目をPromptへ挿入</button>
+    </div>
+    <p class="hier-status is-empty" data-hier-status>未選択（上の名前・所属欄をフリー入力として使用中）</p>
+
+    <div class="hier-manage" data-hier-manage style="display:none;">
+      <div class="hier-manage-block">
+        <div class="hier-manage-title">所属を登録</div>
+        <div class="hier-add-row">
+          <input type="text" data-new-org-name placeholder="表示名（例: 東方Project）" autocomplete="off">
+          <input type="text" data-new-org-value placeholder="Promptタグ（例: touhou、任意）" autocomplete="off">
+          <button class="btn" data-add-org>＋ 所属を追加</button>
+        </div>
+        <div class="hier-list" data-org-list></div>
+      </div>
+      <div class="hier-manage-block">
+        <div class="hier-manage-title">グループを登録</div>
+        <div class="hier-add-row">
+          <select data-new-group-org><option value="">所属を選択...</option></select>
+          <input type="text" data-new-group-name placeholder="表示名（例: 紅魔郷組）" autocomplete="off">
+          <input type="text" data-new-group-value placeholder="Promptタグ（任意）" autocomplete="off">
+          <button class="btn" data-add-group>＋ グループを追加</button>
+        </div>
+        <div class="hier-list" data-group-list></div>
+      </div>
+      <div class="hier-manage-block">
+        <div class="hier-manage-title">キャラクターを登録</div>
+        <div class="hier-add-row">
+          <select data-new-char-group><option value="">グループを選択...</option></select>
+          <input type="text" data-new-char-name placeholder="表示名（例: 博麗霊夢）" autocomplete="off">
+          <input type="text" data-new-char-value placeholder="Promptタグ（例: hakurei_reimu）" autocomplete="off">
+          <button class="btn" data-add-char>＋ キャラクターを追加</button>
+        </div>
+        <div class="hier-list" data-char-list></div>
+      </div>
+      <p class="char-hint">所属→グループ→キャラクターの順で登録してください。表示名は日本語、Promptタグはdanbooru形式（例: hakurei_reimu）を推奨します。削除すると、その配下のグループ・キャラクターも一緒に削除されます。</p>
+    </div>
+  </div>
+
+  <div class="tray-group">
+    <div class="tray-group-head">
+      <span class="tray-label">Prompt <span data-pos-count>0</span></span>
+      <button class="multi-toggle-btn" data-multi-toggle="positive">選択削除</button>
+    </div>
+    <div class="tray-chips" data-pos-chips></div>
+    <div class="output-box">
+      <textarea class="out" data-pos-out readonly placeholder="タグをタップすると、ここに追加されます"></textarea>
+      <div class="reorder-row">
+        <span class="reorder-label">並べ替え:</span>
+        <button class="btn" data-reorder="classic" title="品質タグを先頭、キャラ名はその直後（目録本来の順）">目録標準</button>
+        <button class="btn" data-reorder="pixai" title="被写体・キャラ名を先頭、品質/画風タグを末尾">PixAI順</button>
+        <button class="btn" data-reorder="novelai" title="被写体・キャラ名を先頭、品質タグを末尾（NAI Diffusion V3/V4.5系）">NovelAI順</button>
+      </div>
+      <p class="reorder-hint">PixAIとNovelAI（V3/V4.5系の現行モデル）は、品質タグを先頭ではなく末尾に置いた方が効きやすいとされています。目録本来の並び順（品質タグが先頭）を使いたい場合や、NovelAIでも旧V1系モデルを使う場合は「目録標準」を選んでください。</p>
+      <div class="out-actions">
+        <button class="btn primary" data-copy-pos>Promptをコピー</button>
+        <button class="btn" data-multi-delete="positive" style="display:none;">選んだ0件を削除</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="tray-group">
+    <div class="tray-group-head">
+      <span class="tray-label neg">Negative prompt <span data-neg-count>0</span></span>
+      <button class="multi-toggle-btn" data-multi-toggle="negative">選択削除</button>
+    </div>
+    <div class="tray-chips" data-neg-chips></div>
+    <div class="output-box">
+      <textarea class="out" data-neg-out readonly placeholder="ネガティブ用語セクションのタグ、または任意のタグを長押しせず選ぶと追加できます"></textarea>
+      <div class="out-actions">
+        <button class="btn" data-copy-neg>Negativeをコピー</button>
+        <button class="btn" data-multi-delete="negative" style="display:none;">選んだ0件を削除</button>
+      </div>
+    </div>
+  </div>
+
+  <hr class="rule">
+  <button class="btn primary" data-copy-both style="width:100%; justify-content:center; padding:10px;">Prompt + Negative をまとめてコピー</button>
+</div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
